@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Taipei Tour</string>
+    <string name="traditional_chinese">Traditional Chinese</string>
+    <string name="simplified_chinese">Simplified Chinese</string>
+    <string name="english">English</string>
+    <string name="japanese">Japanese</string>
+    <string name="korean">Korean</string>
+    <string name="data_loading">Loading...</string>
+    <string name="select_language">select language</string>
+    <string name="url_error">url error</string>
+    <string name="finish_loading">loading complete</string>
+</resources>

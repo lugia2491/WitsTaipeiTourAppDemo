@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Taipei Tour</string>
+    <string name="traditional_chinese">중국어 번체</string>
+    <string name="simplified_chinese">중국어 간체</string>
+    <string name="english">영어</string>
+    <string name="japanese">일본어</string>
+    <string name="korean">한국인</string>
+    <string name="data_loading">데이터를 읽는 중...</string>
+    <string name="select_language">언어 선택</string>
+    <string name="url_error">URL 오류</string>
+    <string name="finish_loading">로딩 완료</string>
+</resources>
