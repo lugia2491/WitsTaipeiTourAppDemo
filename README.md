@@ -1,11 +1,11 @@
 # **TaipeiTour - Demo**
 
 ### 重點功能：
-
+- View元件使用Binding
 - Lambda語法使用
 - 引入RxAndroid
 - 簡化架構.翻新程式碼
-
+* * *
 - 政府開放資料平台\- API串接
 - 使用MVVM架構
 - 多國語系切換
