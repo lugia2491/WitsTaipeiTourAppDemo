@@ -6,43 +6,37 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import androidx.transition.TransitionInflater
-import com.scwang.smart.refresh.footer.ClassicsFooter
-import com.scwang.smart.refresh.layout.SmartRefreshLayout
-import com.scwang.smart.refresh.layout.api.RefreshLayout
-import com.scwang.smart.refresh.layout.listener.OnLoadMoreListener
-import com.scwang.smart.refresh.layout.listener.OnRefreshListener
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.disposables.CompositeDisposable
+import io.reactivex.rxjava3.observers.DisposableObserver
 import org.json.JSONArray
-import org.json.JSONObject
-import wits.lugia.demo.factory.DataFactory
-import wits.lugia.demo.model.DataRepository
+import wits.lugia.demo.model.DataResponseModel
 import wits.lugia.demo.viewModel.DataViewModel
 import wits.lugia.demo.R
 import wits.lugia.demo.activity.MainActivity
 import wits.lugia.demo.adapter.AttractionsListAdapter
+import wits.lugia.demo.data.AttractionItemData
+import wits.lugia.demo.databinding.FragmentTourListBinding
+import wits.lugia.demo.factory.ViewModelFactory
 
 /**
  * 景點清單頁面
  */
 class TourListFragment : Fragment() {
-    private lateinit var v: View
-    private lateinit var rvList: RecyclerView
-    private lateinit var srlTourList: SmartRefreshLayout
-    private lateinit var cfFooter: ClassicsFooter
+    //可null類型，離開時需清空
+    private var _binding: FragmentTourListBinding? = null
+    //方便使用
+    private val binding get() = _binding!!
     private lateinit var mAttractionsListAdapter: AttractionsListAdapter
-
     private lateinit var mainActivity: MainActivity
-    private lateinit var dataRepository: DataRepository
-    private lateinit var dataFactory: DataFactory
     private lateinit var dataViewModel: DataViewModel
-
-    private var pageLoad = 1//目前頁碼
-    private var tmpData = JSONObject()//已下載的資料
-    private var addMode = false
+    private val cdAdapterItemClick = CompositeDisposable()
+    private var nextPage = false//是否前往下一頁
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
@@ -50,7 +44,7 @@ class TourListFragment : Fragment() {
         mainActivity = context as MainActivity
     }
 
-    //初始化
+    /** 初始化 */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         //進場動畫
@@ -60,100 +54,96 @@ class TourListFragment : Fragment() {
         exitTransition = inflater.inflateTransition(R.transition.slide_left)
     }
 
-    //載入元件
+    /** 載入元件 */
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,savedInstanceState: Bundle?): View {
-        // Inflate the layout for this fragment
-        v = inflater.inflate(R.layout.fragment_tour_list, container, false)
-        rvList = v.findViewById(R.id.rv_fm_tour_list)
-        srlTourList = v.findViewById(R.id.srl_tour_list)
-        cfFooter = v.findViewById(R.id.cf_tour_list_footer)
+        _binding = FragmentTourListBinding.inflate(inflater, container, false)
+        //載入ViewModel
+        dataViewModel = ViewModelProviders.of(this, ViewModelFactory{ DataViewModel(DataResponseModel()) }).get(DataViewModel::class.java)
 
-        dataRepository = DataRepository()
-        dataFactory = DataFactory(dataRepository)
-        dataViewModel = ViewModelProvider(this, dataFactory).get(DataViewModel::class.java)
-
-        return v
+        return binding.root
     }
 
-    //初始化UI
+    /** 初始化UI */
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        srlTourList.setEnableLoadMore(true) //是否啟用拉到底載入功能
-        srlTourList.setEnableOverScrollDrag(true) //是否啟用越界拖動（仿蘋果效果）1.0.4
-        srlTourList.setDragRate(0.6f) //阻尼係數
-        srlTourList.setOnRefreshListener(object : OnRefreshListener {
-            override fun onRefresh(refreshLayout: RefreshLayout) {
-                refreshList()
+        binding.srlTourList
+            .setEnableLoadMore(true) //是否啟用拉到底載入功能
+            .setEnableOverScrollDrag(true) //是否啟用越界拖動（仿蘋果效果）1.0.4
+            .setDragRate(0.6f) //阻尼係數
+            .setOnRefreshListener { refreshList() }
+            .setOnLoadMoreListener { //lambda簡寫: 往下讀取
+                updateList(true)
             }
-        })
-        srlTourList.setOnLoadMoreListener(object : OnLoadMoreListener {
-            override fun onLoadMore(refreshlayout: RefreshLayout) {
-                //往下讀取
-                pageLoad++
-                updateList(pageLoad, true)
-            }
-        })
 
-        //先將Adapter new出來
-        mAttractionsListAdapter = AttractionsListAdapter()
-        //初始化Adapter
-        mAttractionsListAdapter.initDeviceUserManagerAdapter(v.context, JSONArray())
-        //決定清單樣式與方向(這邊預設)
-        rvList.layoutManager = LinearLayoutManager(v.context)
+        mAttractionsListAdapter = AttractionsListAdapter(JSONArray(), binding.root.context)
+        //上方已帶入資料，不需要另外init
+//        mAttractionsListAdapter.initDeviceUserManagerAdapter(binding.root.context, JSONArray())
+        //決定清單樣式與方向
+        binding.rvFmTourList.layoutManager = LinearLayoutManager(binding.root.context)
         //將Adapter套用至RecyclerView
-        rvList.adapter = mAttractionsListAdapter
-        //點擊監聽
-        mAttractionsListAdapter.setAttractionsListClickListener(object :
-            AttractionsListAdapter.AttractionsListClickListener {
-            override fun viewClickListener(view: View?, clickData: JSONObject, position: Int) {
-                //前往詳細頁面
-                mainActivity.goDetailed(clickData)
-            }
-        })
+        binding.rvFmTourList.adapter = mAttractionsListAdapter
 
         initObserve()
 
-        updateList(pageLoad, false)
+        updateList(false)
     }
 
-    //初始化觀察者
+    /** 初始化觀察者 */
     private fun initObserve(){
         //等待回應
         dataViewModel.getApiLiveData().observe(viewLifecycleOwner){data ->
-            Log.d("更新", data.toString())
-            tmpData = data
+            Log.d("資料已更新", data.toString())
             mAttractionsListAdapter.updateList(data.getJSONArray("data"))
             mainActivity.showLoading(false)
-            srlTourList.finishRefresh(true)
-            if(addMode){
-                srlTourList.finishLoadMore(true)
+            binding.srlTourList.finishRefresh(true)
+            if(nextPage){
+                binding.srlTourList.finishLoadMore(true)
             }
         }
+        dataViewModel.getErrorLiveData().observe(viewLifecycleOwner){
+            mainActivity.showLoading(false)
+            binding.srlTourList.finishRefresh(true)
+            Toast.makeText(binding.root.context, "連線失敗", Toast.LENGTH_LONG).show()
+        }
+
+        //清單點擊
+        cdAdapterItemClick.add(mAttractionsListAdapter.getItemClickObservable()
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribeWith(object : DisposableObserver<AttractionItemData>() {
+                override fun onNext(mAttractionItemData: AttractionItemData) {
+                    //前往詳細頁面
+                    mainActivity.goDetailed(mAttractionItemData.itemData)
+                }
+
+                override fun onError(e: Throwable) {}
+
+                override fun onComplete() {}
+            }))
     }
 
     /**
      * 更新清單
-     * @param page 頁碼，1開始
+     * @param addMode 是否往下一頁
      */
-    private fun updateList(page: Int, addMode: Boolean){
-        this.addMode = addMode
+    private fun updateList(addMode: Boolean){
+        this.nextPage = addMode
         mainActivity.showLoading(true)
         //開始讀取資料
-        //是否往後增加資料
-        if(addMode){
-            dataViewModel.callApi(page.toString(), tmpData, mainActivity.getLanguage())
-        }else{
-            dataViewModel.callApi(page.toString(), null, mainActivity.getLanguage())
-        }
-
+        dataViewModel.callApi(addMode, mainActivity.getLanguage())
     }
 
     /**
      * 重整清單
      */
-    fun refreshList(){
-        pageLoad = 1
+    private fun refreshList(){
         mAttractionsListAdapter.updateList(JSONArray())
-        updateList(pageLoad, false)
+        updateList(false)
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        //結束時釋放
+        cdAdapterItemClick.dispose()
+        _binding = null
     }
 }

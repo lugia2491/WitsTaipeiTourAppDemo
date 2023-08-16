@@ -10,4 +10,11 @@
     <string name="select_language">選擇語系</string>
     <string name="url_error">網址錯誤</string>
     <string name="finish_loading">載入完成</string>
+    <string-array name="language_list">
+        <item>正體中文</item>
+        <item>簡體中文</item>
+        <item>英文</item>
+        <item>日文</item>
+        <item>韓文</item>
+    </string-array>
 </resources>

@@ -11,99 +11,83 @@ import android.view.View
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.ImageButton
-import android.widget.ProgressBar
-import android.widget.TextView
 import wits.lugia.demo.R
+import wits.lugia.demo.databinding.ActivityWebBinding
 
+/** 網頁顯示頁面 */
 class WebActivity : AppCompatActivity() {
 
-    private lateinit var wvWeb: WebView
-    private lateinit var tvTitle: TextView
-    private lateinit var ibClose: ImageButton
-    private lateinit var pbLoading: ProgressBar
+    private lateinit var binding: ActivityWebBinding
 
-    //接收url
     companion object {
-        private const val EXTRA_URL = "extra_url"
+        //接收URL
+        private const val EXTRA_URL = "EXTRA_URL"
 
         fun newIntent(context: Context, url: String): Intent {
-            val intent = Intent(context, WebActivity::class.java)
-            intent.putExtra(EXTRA_URL, url)
-            return intent
+            return Intent(context, WebActivity::class.java).putExtra(EXTRA_URL, url)
         }
     }
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_web)
+        binding = ActivityWebBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-        initUi()
-        initListener()
         initWebView()
-
-        //取得網址
-        val url = intent.getStringExtra(EXTRA_URL)
-        //開啟網頁
-        if (url != null) {
-            wvWeb.loadUrl(url)
-        }else{
-            tvTitle.text = getString(R.string.url_error)
-        }
-    }
-
-    private fun initUi(){
-        wvWeb = findViewById(R.id.wv_web_web)
-        tvTitle = findViewById(R.id.tv_web_title)
-        ibClose = findViewById(R.id.ib_web_close)
-        pbLoading = findViewById(R.id.pb_web_loading)
-    }
-
-    private fun initListener(){
-        ibClose.setOnClickListener {
-            finish()
-        }
+        setListener()
+        loadUrl()
     }
 
     @SuppressLint("SetJavaScriptEnabled")
+    /** 初始化網頁 */
     private fun initWebView(){
         //開啟JavaScript
-        wvWeb.settings.javaScriptEnabled = true
-        wvWeb.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-                if (url != null) {
-                    view?.loadUrl(url)
-                }
-                return true
-            }
-
-            override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+        binding.wvWebArea.settings.javaScriptEnabled = true
+        //開啟資料儲存
+        binding.wvWebArea.settings.domStorageEnabled = true
+        //讀取進度顯示
+        binding.wvWebArea.webViewClient = object : WebViewClient() {
+            override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
-                pbLoading.visibility = View.VISIBLE
+                binding.pbWebLoading.visibility = View.VISIBLE
             }
 
-            override fun onPageFinished(view: WebView?, url: String?) {
+            override fun onPageFinished(view: WebView, url: String) {
                 super.onPageFinished(view, url)
-                tvTitle.text = view?.title
-                pbLoading.visibility = View.INVISIBLE
+                binding.tvWebTitle.text = view.title
+                binding.pbWebLoading.visibility = View.INVISIBLE
             }
         }
 
-        //Client端控制
-        wvWeb.webChromeClient = object : WebChromeClient() {
-            override fun onProgressChanged(view: WebView?, newProgress: Int) {
+        //顯示讀取進度
+        binding.wvWebArea.webChromeClient = object : WebChromeClient() {
+            override fun onProgressChanged(view: WebView, newProgress: Int) {
                 super.onProgressChanged(view, newProgress)
-                pbLoading.progress = newProgress
+                binding.pbWebLoading.progress = newProgress
             }
         }
     }
 
+    /** 設定Listener */
+    private fun setListener(){
+        binding.ibWebClose.setOnClickListener { finish() }
+    }
+
+    /** 載入網址，如果讀不到就顯示錯誤 */
+    private fun loadUrl(){
+        intent.getStringExtra(EXTRA_URL)?.let { url ->
+            binding.wvWebArea.loadUrl(url)
+        } ?: run {
+            binding.tvWebTitle.text = getString(R.string.url_error)
+        }
+    }
+
+    /** 返回鍵事件複寫 */
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         if (keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
-            //是否還可以上一頁
-            if (wvWeb.canGoBack()) {
-                wvWeb.goBack()//上一頁
+            //檢查是否還可以上一頁
+            if (binding.wvWebArea.canGoBack()) {
+                binding.wvWebArea.goBack()
             }else{
                 finish()
             }

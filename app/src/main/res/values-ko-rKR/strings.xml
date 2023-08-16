@@ -10,4 +10,11 @@
     <string name="select_language">언어 선택</string>
     <string name="url_error">URL 오류</string>
     <string name="finish_loading">로딩 완료</string>
+    <string-array name="language_list">
+        <item>중국어 번체</item>
+        <item>중국어 간체</item>
+        <item>영어</item>
+        <item>일본어</item>
+        <item>한국인</item>
+    </string-array>
 </resources>

@@ -2,102 +2,79 @@ package wits.lugia.demo.activity
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.view.KeyEvent
-import android.widget.ImageButton
-import android.widget.ProgressBar
-import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.FragmentManager
-import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProviders
 import org.json.JSONObject
 import wits.lugia.demo.R
-import wits.lugia.demo.factory.DataFactory
-import wits.lugia.demo.factory.LocaleFactory
+import wits.lugia.demo.databinding.ActivityMainBinding
+import wits.lugia.demo.factory.ViewModelFactory
 import wits.lugia.demo.fragment.TourDetailedFragment
 import wits.lugia.demo.fragment.TourListFragment
-import wits.lugia.demo.model.DataRepository
-import wits.lugia.demo.model.LocaleConverter
+import wits.lugia.demo.model.LocaleConverterModel
 import wits.lugia.demo.tool.AnimationTool
 import wits.lugia.demo.tool.LocaleChange
 import wits.lugia.demo.tool.ProgressBarDelay
-import wits.lugia.demo.viewModel.DataViewModel
 import wits.lugia.demo.viewModel.LocaleViewModel
 
-
+/** 主頁面 */
 class MainActivity : AppCompatActivity() {
 
     companion object {
-        const val LOCALE_INDEX = "LOCALE_INDEX" //自訂語系
+        /** 自訂語系 */
+        const val LOCALE_INDEX = "LOCALE_INDEX"
     }
 
-    private lateinit var ibBack: ImageButton
-    private lateinit var ibSelectLanguage: ImageButton
-    private lateinit var tvAppTitle: TextView
-    private lateinit var tvTitle: TextView
-    private lateinit var pbLoading: ProgressBar
-
+    //自動BindView，省去findViewById
+    private lateinit var binding: ActivityMainBinding
     private lateinit var fm: FragmentManager
     private lateinit var fmTourList: TourListFragment
     private lateinit var fmTourDetailed: TourDetailedFragment
-
     private lateinit var mProgressBarDelay: ProgressBarDelay
-    //model
-    private lateinit var dataRepository: DataRepository
-    private lateinit var localeConverter: LocaleConverter
     //ViewModel
-    private lateinit var dataViewModel: DataViewModel
     private lateinit var localeViewModel: LocaleViewModel
-    //Factory
-    private lateinit var dataFactory: DataFactory
-    private lateinit var localeFactory: LocaleFactory
-
-    private var inTourDetailed = false//fm狀態
     private var currentLanguage = ""//目前語系
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        //讀入Activity binding的內容
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
+        //讀入設定的語言
         val receivedValue = intent.getIntExtra(LOCALE_INDEX, 0)
-
         //初始化語言
         currentLanguage = resources.getStringArray(R.array.country_code)[receivedValue]
 
         //初始化MVVM
-        dataRepository = DataRepository()
-        localeConverter = LocaleConverter()
-        dataFactory = DataFactory(dataRepository)
-        localeFactory = LocaleFactory(localeConverter)
-        dataViewModel = ViewModelProvider(this, dataFactory).get(DataViewModel::class.java)
-        localeViewModel = ViewModelProvider(this, localeFactory).get(LocaleViewModel::class.java)
+        //用ViewModelFactory把LocaleViewModel跟LocaleConverterModel串起
+        localeViewModel = ViewModelProviders.of(this, ViewModelFactory { LocaleViewModel(LocaleConverterModel()) }).get(LocaleViewModel::class.java)
 
         mProgressBarDelay = ProgressBarDelay()
 
         initUi()
         initObserve()
         setUiListener()
-
     }
 
+    /** 初始化ui */
     private fun initUi(){
-        ibBack = findViewById(R.id.ib_main_back)
-        ibSelectLanguage = findViewById(R.id.ib_main_select_language)
-        tvAppTitle = findViewById(R.id.tv_main_app_title)
-        tvTitle = findViewById(R.id.tv_main_title)
-        pbLoading = findViewById(R.id.pb_main_Loading)
-
         //初始化Fragment
         fm = supportFragmentManager
         fmTourList = TourListFragment()
         fmTourDetailed = TourDetailedFragment()
 
-        val transaction = fm.beginTransaction()
-        transaction.add(R.id.fm_main_list, fmTourList)
-        transaction.commit()
+        //效果等同
+        //val transaction = fm.beginTransaction()
+        //transaction.add(binding.fmMainList.id, fmTourList)
+        //transaction.commit()
+        //不需要再產生 transaction 節省記憶體使用
+        fm.beginTransaction().add(binding.fmMainList.id, fmTourList).commit()
     }
 
+    /** 初始化觀察者 */
     private fun initObserve(){
         //設定語系
         localeViewModel.getConvertLocale().observe(this) { locale ->
@@ -105,37 +82,27 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** 設定Listener */
     private fun setUiListener(){
         //返回清單
-        ibBack.setOnClickListener{
-            backTourList()
-        }
+        binding.ibMainBack.setOnClickListener{ backTourList() }
 
         //語言選擇
-        ibSelectLanguage.setOnClickListener {
-            //載入語言清單
-            val languageList = arrayOf(
-                getString(R.string.traditional_chinese)
-                , getString(R.string.simplified_chinese)
-                , getString(R.string.english)
-                , getString(R.string.japanese)
-                , getString(R.string.korean))
-
-            val builder = AlertDialog.Builder(it.context)
-            builder.setTitle(getString(R.string.select_language)).setItems(languageList) { dialog, which ->
+        binding.ibMainSelectLanguage.setOnClickListener {
+            // 顯示語言選擇清單
+            // 只有單次使用不用產生 val Dialog builder
+            // 直接帶入語系清單，不須另外產生 val languageList = resources.getStringArray(R.array.language_list)
+            AlertDialog.Builder(it.context)
+                .setTitle(getString(R.string.select_language))
+                .setItems(resources.getStringArray(R.array.language_list)) { _, which ->
                 //設定目前選取語系(for api)
                 currentLanguage = resources.getStringArray(R.array.country_code)[which]
-                Log.d("語系選擇", currentLanguage)
                 //重整
                 localeViewModel.convertIndex(which)
-
-                val intent = Intent(this@MainActivity, MainActivity::class.java)
-                intent.putExtra(LOCALE_INDEX, which)
-                startActivity(intent)
+                startActivity(Intent(this@MainActivity, MainActivity::class.java).putExtra(LOCALE_INDEX, which))
                 finish()
-            }
-            builder.create()
-            builder.show()
+
+            }.create().show()
         }
     }
 
@@ -144,60 +111,53 @@ class MainActivity : AppCompatActivity() {
      * @param data 詳細資訊
      */
     fun goDetailed(data: JSONObject){
-        inTourDetailed = true
         fmTourDetailed.setData(data)
-        val transaction = fm.beginTransaction()
+
+        //省略產生 val transaction 節省記憶體開銷
         //隱藏並顯示
         if(fmTourDetailed.isAdded){
-            transaction.hide(fmTourList).show(fmTourDetailed).commit()
+            fm.beginTransaction().hide(fmTourList).show(fmTourDetailed).commit()
         }else{
-            transaction.hide(fmTourList).add(R.id.fm_main_list, fmTourDetailed).commit()
+            fm.beginTransaction().hide(fmTourList).add(binding.fmMainList.id, fmTourDetailed).commit()
         }
 
-        AnimationTool.fadeOut(tvAppTitle)
-        AnimationTool.fadeOut(ibSelectLanguage)
-        tvTitle.text = data.getString("name")
-        AnimationTool.fadeIn(tvTitle)
-        AnimationTool.fadeIn(ibBack)
+        AnimationTool.fadeOut(binding.tvMainAppTitle)
+        AnimationTool.fadeOut(binding.ibMainSelectLanguage)
+        binding.tvMainTitle.text = data.getString("name")
+        AnimationTool.fadeIn(binding.tvMainTitle)
+        AnimationTool.fadeIn(binding.ibMainBack)
     }
 
-    /**
-     * 詳細資訊返回清單
-     */
+    /** 詳細資訊返回清單 */
     private fun backTourList(){
-        inTourDetailed = false
-        val transaction = fm.beginTransaction()
+        //省略產生 val transaction 節省記憶體開銷
         //移除fmTourDetailed
         if(fmTourList.isAdded){
-            transaction.remove(fmTourDetailed).show(fmTourList).commit()
+            fm.beginTransaction().remove(fmTourDetailed).show(fmTourList).commit()
         }else{
-            transaction.remove(fmTourDetailed).add(R.id.fm_main_list, fmTourList).commit()
+            fm.beginTransaction().remove(fmTourDetailed).add(binding.fmMainList.id, fmTourList).commit()
         }
 
-        AnimationTool.fadeOut(tvTitle)
-        AnimationTool.fadeOut(ibBack)
-        AnimationTool.fadeIn(ibSelectLanguage)
-        AnimationTool.fadeIn(tvAppTitle)
+        AnimationTool.fadeOut(binding.tvMainTitle)
+        AnimationTool.fadeOut(binding.ibMainBack)
+        AnimationTool.fadeIn(binding.ibMainSelectLanguage)
+        AnimationTool.fadeIn(binding.tvMainAppTitle)
     }
 
-    /**
-     * 取得目前語言
-     */
+    /** 取得目前語言設定 */
     fun getLanguage(): String{
         return currentLanguage
     }
 
-    /**
-     * 顯示載入中
-     */
+    /** 顯示載入中 */
     fun showLoading(show: Boolean){
-        mProgressBarDelay.progressDelay(pbLoading, show)
+        mProgressBarDelay.progressDelay(binding.pbMainLoading, show)
     }
 
-    //返回鍵攔截
+    /** 返回鍵事件複寫 */
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         if (keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
-            if(inTourDetailed){
+            if(fmTourDetailed.isAdded){
                 backTourList()
             }else{
                 finish()

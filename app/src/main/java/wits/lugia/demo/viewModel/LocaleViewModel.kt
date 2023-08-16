@@ -3,10 +3,10 @@ package wits.lugia.demo.viewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import wits.lugia.demo.model.LocaleConverter
+import wits.lugia.demo.model.LocaleConverterModel
 import java.util.Locale
 
-class LocaleViewModel(private var localeConverter: LocaleConverter): ViewModel()  {
+class LocaleViewModel(private var localeConverterModel: LocaleConverterModel): ViewModel()  {
     //建立LiveData
     private val convertLocale = MutableLiveData<Locale>()
 
@@ -15,7 +15,7 @@ class LocaleViewModel(private var localeConverter: LocaleConverter): ViewModel()
      * @param index Index
      */
     fun convertIndex(index: Int) {
-        val convertedLocale = localeConverter.convertIndexToLocale(index)
+        val convertedLocale = localeConverterModel.convertIndexToLocale(index)
         convertLocale.value = convertedLocale
     }
 

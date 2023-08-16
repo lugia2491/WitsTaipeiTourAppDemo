@@ -6,7 +6,7 @@ import android.view.View
 
 /**
  * 動畫工具庫
- * 作者：LUGIA
+ * 作者：洪斌峰
  * 日期：2023/07/30
  */
 object AnimationTool {
