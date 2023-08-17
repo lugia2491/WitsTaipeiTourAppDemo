@@ -8,7 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProviders
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.transition.TransitionInflater
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
@@ -58,7 +58,7 @@ class TourListFragment : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,savedInstanceState: Bundle?): View {
         _binding = FragmentTourListBinding.inflate(inflater, container, false)
         //載入ViewModel
-        dataViewModel = ViewModelProviders.of(this, ViewModelFactory{ DataViewModel(DataResponseModel()) }).get(DataViewModel::class.java)
+        dataViewModel = ViewModelProvider(this, ViewModelFactory{ DataViewModel(DataResponseModel()) })[(DataViewModel::class.java)]
 
         return binding.root
     }

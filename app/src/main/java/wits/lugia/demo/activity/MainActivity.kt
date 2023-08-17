@@ -6,7 +6,7 @@ import android.view.KeyEvent
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.FragmentManager
-import androidx.lifecycle.ViewModelProviders
+import androidx.lifecycle.ViewModelProvider
 import org.json.JSONObject
 import wits.lugia.demo.R
 import wits.lugia.demo.databinding.ActivityMainBinding
@@ -50,7 +50,7 @@ class MainActivity : AppCompatActivity() {
 
         //初始化MVVM
         //用ViewModelFactory把LocaleViewModel跟LocaleConverterModel串起
-        localeViewModel = ViewModelProviders.of(this, ViewModelFactory { LocaleViewModel(LocaleConverterModel()) }).get(LocaleViewModel::class.java)
+        localeViewModel = ViewModelProvider(this, ViewModelFactory { LocaleViewModel(LocaleConverterModel()) })[LocaleViewModel::class.java]
 
         mProgressBarDelay = ProgressBarDelay()
 
